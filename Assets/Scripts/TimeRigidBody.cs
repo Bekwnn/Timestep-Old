@@ -27,8 +27,6 @@ public class TimeRigidBody {
 
 	public void FixedRigidBodyForwardUpdate()
 	{
-		//TODO: fix physics during time acceleration/decceleration
-
 		if (timeWasForward)
 		{
 			rigidBody.velocity = realVelocity * timeObject.timeScale;
