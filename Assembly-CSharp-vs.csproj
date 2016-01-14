@@ -48,9 +48,16 @@
   <ItemGroup>
      <Compile Include="Assets\Scripts\CharacterCamera.cs" />
      <Compile Include="Assets\Scripts\CharacterMovement.cs" />
+     <Compile Include="Assets\Scripts\TimeHistory.cs" />
      <Compile Include="Assets\Scripts\TimeManager.cs" />
+     <Compile Include="Assets\Scripts\TimeManip.cs" />
+     <Compile Include="Assets\Scripts\TimeManipGlobal.cs" />
+     <Compile Include="Assets\Scripts\TimeManipLocal.cs" />
+     <Compile Include="Assets\Scripts\TimeManipSelf.cs" />
      <Compile Include="Assets\Scripts\TimeObject.cs" />
      <Compile Include="Assets\Scripts\TimeRigidBody.cs" />
+     <Compile Include="Assets\Scripts\UIColorChange.cs" />
+     <Compile Include="Assets\Scripts\WeaponSwitch.cs" />
  <Reference Include="UnityEngine.UI">
  <HintPath>C:/Program Files/Unity/Editor/Data/UnityExtensions/Unity/GUISystem/UnityEngine.UI.dll</HintPath>
  </Reference>

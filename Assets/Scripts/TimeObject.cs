@@ -2,31 +2,10 @@
 using System;
 using System.Collections.Generic;
 
-public struct TimeInfo<T> {
-	public T data;
-	public float time;
-	
-	public TimeInfo(T value, float time)
-	{
-		data = value;
-		this.time = time;
-	}
-
-	//TODO: increase error margin for the comparison?
-	public static bool operator == (TimeInfo<T> lhs, TimeInfo<T> rhs)
-	{
-		return (lhs.data.Equals(rhs.data));
-	}
-
-	public static bool operator != (TimeInfo<T> lhs, TimeInfo<T> rhs)
-	{
-		return !(lhs.data.Equals(rhs.data));
-	}
-}
-
 public class TimeObject : MonoBehaviour {
 
 	public Rigidbody rigidBody;
+	public int capturePerSecond = 30;
 
 	public bool bOnLocalTime;	//determines whether object is on its own timescale
 	public float localTimeScale;
@@ -34,17 +13,17 @@ public class TimeObject : MonoBehaviour {
 	public float localTimeMultiplier = 1f;	//update and rewind are multiplied by this factor
 	
 	public float pastTimeScale { get; private set; } //time scale during last fixed update
-	public float time { get; private set; }
-	public float timeScale { get; private set; } //the complete, local time scale for a time object
+	public float time { get; set; }
+	public float timeScale { get; private set; } //either the local time scale or global for a time object
 
 	private TimeRigidBody timeRigidBody;
 
-	private List<TimeInfo<Vector3>> positionHistory = new List<TimeInfo<Vector3>>();
-	private List<TimeInfo<Quaternion>> rotationHistory = new List<TimeInfo<Quaternion>>();
-	private List<TimeInfo<Vector3>> scaleHistory = new List<TimeInfo<Vector3>>();
+	private TimeHistory<Vector3> positionHistory;
+	private TimeHistory<Quaternion> rotationHistory;
+	private TimeHistory<Vector3> scaleHistory;
 
-	private List<TimeInfo<Vector3>> realVelocityHistory = new List<TimeInfo<Vector3>>();
-	private List<TimeInfo<Vector3>> realAngularVelocityHistory = new List<TimeInfo<Vector3>>();
+	private TimeHistory<Vector3> realVelocityHistory;
+	private TimeHistory<Vector3> realAngularVelocityHistory;
 
 	// Use this for initialization
 	void Start ()
@@ -56,19 +35,18 @@ public class TimeObject : MonoBehaviour {
 		//initialize timeScale
 		timeScale = (bOnLocalTime)? localTimeScale : TimeManager.global.timeScale;
 
-		//starting info for histories
-		positionHistory.Add(new TimeInfo<Vector3>(transform.position, this.time));
-		rotationHistory.Add(new TimeInfo<Quaternion>(transform.rotation, this.time));
-		scaleHistory.Add(new TimeInfo<Vector3>(transform.localScale, this.time));
+		positionHistory = new TimeHistory<Vector3>(transform.position, capturePerSecond);
+		rotationHistory = new TimeHistory<Quaternion>(transform.rotation, capturePerSecond);
+		scaleHistory = new TimeHistory<Vector3>(transform.localScale, capturePerSecond);
 
 		if (timeRigidBody != null)
 		{
-			realVelocityHistory.Add(new TimeInfo<Vector3>(timeRigidBody.rigidBody.velocity, this.time));
-			realAngularVelocityHistory.Add(new TimeInfo<Vector3>(timeRigidBody.rigidBody.angularVelocity, this.time));
+			realVelocityHistory = new TimeHistory<Vector3>(Vector3.zero, capturePerSecond);
+			realAngularVelocityHistory = new TimeHistory<Vector3>(Vector3.zero, capturePerSecond);
 		}
 	}
 
-	//time manip done here to control memory use
+	//TODO: create coroutine 
 	void FixedUpdate()
 	{
 		timeScale = (bOnLocalTime)? localTimeScale : TimeManager.global.timeScale;
@@ -79,13 +57,13 @@ public class TimeObject : MonoBehaviour {
 
 		if (timeScale > 0f)
 		{
-			timeRigidBody.FixedRigidBodyForwardUpdate();
+			if (timeRigidBody != null) timeRigidBody.FixedRigidBodyForwardUpdate();
 			ForwardUpdate();
 		}
 
 		else if (timeScale <= 0f)
 		{
-			timeRigidBody.FreezeRigidBody();
+			if (timeRigidBody != null) timeRigidBody.FreezeRigidBody();
 
 			if (timeScale < 0f)
 				RewindUpdate();
@@ -95,23 +73,16 @@ public class TimeObject : MonoBehaviour {
 	}
 
 	void ForwardUpdate () {
-		//update transform info
-		TimeInfo<Vector3> currentPositionInfo = new TimeInfo<Vector3>(transform.position, this.time);
-		TimeInfo<Quaternion> currentRotationInfo = new TimeInfo<Quaternion>(transform.rotation, this.time);
-		TimeInfo<Vector3> currentScaleInfo = new TimeInfo<Vector3>(transform.localScale, this.time);
 
-		UpdateList<Vector3>(currentPositionInfo, positionHistory);
-		UpdateList<Quaternion>(currentRotationInfo, rotationHistory);
-		UpdateList<Vector3>(currentScaleInfo, scaleHistory);
+		TimeHistory<Vector3>.ForwardUpdate    (positionHistory, time, transform.position);
+		TimeHistory<Quaternion>.ForwardUpdate (rotationHistory, time, transform.rotation);
+		TimeHistory<Vector3>.ForwardUpdate    (scaleHistory,    time, transform.localScale);
 
 		//update rigidbody info
 		if (timeRigidBody != null)
 		{
-			TimeInfo<Vector3> currentRealVelocityInfo = new TimeInfo<Vector3> (timeRigidBody.realVelocity, this.time);
-			TimeInfo<Vector3> currentRealAngularVelocityInfo = new TimeInfo<Vector3> (timeRigidBody.realAngularVelocity, this.time);
-		
-			UpdateList<Vector3>(currentRealVelocityInfo, realVelocityHistory);
-			UpdateList<Vector3>(currentRealAngularVelocityInfo, realAngularVelocityHistory);
+			TimeHistory<Vector3>.ForwardUpdate(realVelocityHistory,        time, timeRigidBody.realVelocity);
+			TimeHistory<Vector3>.ForwardUpdate(realAngularVelocityHistory, time, timeRigidBody.realAngularVelocity);
 		}
 
 		//TODO: update animation info
@@ -119,46 +90,44 @@ public class TimeObject : MonoBehaviour {
 
 	void RewindUpdate()
 	{
+		TimeInfo<Vector3> posTimeInfo = TimeHistory<Vector3>.RewindTo (positionHistory, time);	//used to set object's time
+
 		//rewind transform
-		transform.position   = RewindHistory<Vector3>(positionHistory).data;
-		transform.rotation   = RewindHistory<Quaternion>(rotationHistory).data;
-		transform.localScale = RewindHistory<Vector3>(scaleHistory).data;
+		transform.position   = posTimeInfo.data;
+		transform.rotation   = TimeHistory<Quaternion>.RewindTo (rotationHistory, time).data;
+		transform.localScale = TimeHistory<Vector3>.RewindTo    (scaleHistory,    time).data;
 
 		//rewind rigidbody
 		if (timeRigidBody != null)
 		{
-			timeRigidBody.realVelocity        = RewindHistory<Vector3>(realVelocityHistory).data;
-			timeRigidBody.realAngularVelocity = RewindHistory<Vector3>(realAngularVelocityHistory).data;
+			timeRigidBody.realVelocity        = TimeHistory<Vector3>.RewindTo(realVelocityHistory,        time).data;
+			timeRigidBody.realAngularVelocity = TimeHistory<Vector3>.RewindTo(realAngularVelocityHistory, time).data;
 		}
 
 		//TODO: rewind animation
+
+		time = posTimeInfo.time;
 	}
 
-	void UpdateList<T>(TimeInfo<T> newInfo, List<TimeInfo<T>> historyList)
+	public void RewindBy(float seconds)
 	{
-		if (!newInfo.data.Equals(historyList[historyList.Count - 1].data))
-		{
-			historyList.Add(newInfo);
-		}
-		else
-		{
-			TimeInfo<T> tempinfo = historyList[historyList.Count - 1];
-			tempinfo.time = time;
-			historyList[historyList.Count - 1] = tempinfo;
-		}
-	}
+		float clampedSeconds = (seconds >= 0f)? seconds : 0f;	//function isn't meant for fastforwarding'
 
-	// returns the relevant time info from the history list
-	TimeInfo<T> RewindHistory<T>(List<TimeInfo<T>> historyList)
-	{
-		TimeInfo<T> newTimeInfo = historyList[historyList.Count - 1];
-		while (historyList.Count > 1 &&
-		       time < historyList[historyList.Count - 2].time)
+		TimeInfo<Vector3> posTimeInfo = TimeHistory<Vector3>.RewindTo (positionHistory, time - clampedSeconds);	//used to set object's time
+
+		//rewind transform
+		transform.position   = posTimeInfo.data;
+		transform.rotation   = TimeHistory<Quaternion>.RewindTo (rotationHistory, time - clampedSeconds).data;
+		transform.localScale = TimeHistory<Vector3>.RewindTo    (scaleHistory,    time - clampedSeconds).data;
+		
+		//rewind rigidbody
+		if (timeRigidBody != null)
 		{
-			newTimeInfo = historyList[historyList.Count - 2];
-			historyList.RemoveAt(historyList.Count - 1);
+			timeRigidBody.realVelocity        = TimeHistory<Vector3>.RewindTo(realVelocityHistory,        time - clampedSeconds).data;
+			timeRigidBody.realAngularVelocity = TimeHistory<Vector3>.RewindTo(realAngularVelocityHistory, time - clampedSeconds).data;
 		}
-		newTimeInfo.time = time;
-		return newTimeInfo;
+		
+		//TODO: rewind animation
+		time = posTimeInfo.time;
 	}
 }

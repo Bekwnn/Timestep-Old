@@ -1,12 +1,9 @@
 ﻿<Properties>
-  <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" PreferredExecutionTarget="MonoDevelop.Default" />
-  <MonoDevelop.Ide.Workbench ActiveDocument="Assets\Scripts\TimeRigidBody.cs">
+  <MonoDevelop.Ide.Workspace />
+  <MonoDevelop.Ide.Workbench ActiveDocument="..\Documents\CodeMuckinAbout\Assets\FitanCharacterInput.cs">
     <Files>
-      <File FileName="Assets\Scripts\TimeManager.cs" Line="24" Column="2" />
-      <File FileName="Assets\Scripts\TimeObject.cs" Line="128" Column="28" />
-      <File FileName="Assets\Scripts\CharacterCamera.cs" Line="1" Column="1" />
-      <File FileName="Assets\Scripts\CharacterMovement.cs" Line="40" Column="60" />
-      <File FileName="Assets\Scripts\TimeRigidBody.cs" Line="37" Column="7" />
+      <File FileName="..\Documents\CodeMuckinAbout\Assets\FitanCharacter.cs" Line="19" Column="2" />
+      <File FileName="..\Documents\CodeMuckinAbout\Assets\FitanCharacterInput.cs" Line="17" Column="11" />
     </Files>
   </MonoDevelop.Ide.Workbench>
   <MonoDevelop.Ide.DebuggingService.Breakpoints>

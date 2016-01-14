@@ -4,6 +4,7 @@ using System.Collections;
 public class CharacterMovement : MonoBehaviour {
 
 	public CharacterCamera mouseLook;
+	public TimeObject timeObject;
 	public Camera cameraObject;
 	public float speed = 6.0F;
 	public float jumpSpeed = 8.0F;
@@ -29,14 +30,9 @@ public class CharacterMovement : MonoBehaviour {
 			if (Input.GetButton("Jump"))
 				moveDirection.y = jumpSpeed;
 		}
-		moveDirection.y -= gravity * Time.deltaTime;
-		controller.Move(moveDirection * Time.deltaTime);
+		moveDirection.y -= gravity * Time.deltaTime * timeObject.timeScale;
+		controller.Move(moveDirection * Time.deltaTime * timeObject.timeScale);
 
 		mouseLook.LookRotation (transform, cameraObject.transform);
-	}
-
-	void FixedUpdate()
-	{
-		TimeManager.global.timeScale = Input.GetAxis("TimeAxis");
 	}
 }
